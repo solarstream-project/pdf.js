@@ -811,6 +811,26 @@ const PDFViewerApplication = {
     } else {
       throw new Error("Not implemented: run");
     }
+
+    // Listen for open events
+    if (!file) {
+      const onMessage = async (/** @type {MessageEvent} */ e) => {
+        console.log("Received message:", e);
+
+        try {
+          if (e.data.type !== "open-file") return;
+
+          await this.open({ data: e.data.data });
+
+          window.removeEventListener("message", onMessage);
+        } catch (err) {
+          console.error("Error parsing message data:", err);
+          return;
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+    }
   },
 
   get externalServices() {
@@ -1187,18 +1207,31 @@ const PDFViewerApplication = {
   },
 
   async download() {
+    // Leon:
+    // This is called when the user clicks save and NOT having changed form fields.
+
     let data;
     try {
       data = await (this.pdfDocument
         ? this.pdfDocument.getData()
         : this.pdfLoadingTask.getData());
+
+      // Pass `data` to the top frame
+      window.top.postMessage({
+        type: "pdfjs-document-saved",
+        data,
+      });
     } catch {
       // When the PDF document isn't ready, simply download using the URL.
     }
-    this.downloadManager.download(data, this._downloadUrl, this._docFilename);
+
+    // this.downloadManager.download(data, this._downloadUrl, this._docFilename);
   },
 
   async save() {
+    // Leon:
+    // This is called when the user clicks save and HAVING changed form fields.
+
     if (this._saveInProgress) {
       return;
     }
@@ -1207,7 +1240,14 @@ const PDFViewerApplication = {
 
     try {
       const data = await this.pdfDocument.saveDocument();
-      this.downloadManager.download(data, this._downloadUrl, this._docFilename);
+
+      // Pass `data` to the top frame
+      window.top.postMessage({
+        type: "pdfjs-document-saved",
+        data,
+      });
+
+      // this.downloadManager.download(data, this._downloadUrl, this._docFilename);
     } catch (reason) {
       // When the PDF document isn't ready, fallback to a "regular" download.
       console.error(`Error when saving the document:`, reason);
