@@ -817,25 +817,31 @@ const PDFViewerApplication = {
       throw new Error("Not implemented: run");
     }
 
-    // Listen for open events
-    if (!file) {
-      const onMessage = async (/** @type {MessageEvent} */ e) => {
-        console.log("Received message:", e);
+    // Listen for events
+    const onMessage = async (/** @type {MessageEvent} */ e) => {
+      console.log("Received message:", e);
 
-        try {
-          if (e.data.type !== "open-file") return;
-
+      try {
+        if (e.data.type === "open-file") {
           await this.open({ data: e.data.data });
+        } else if (e.data.type === "request-file-data") {
+          const data = await this.pdfDocument.saveDocument();
 
-          window.removeEventListener("message", onMessage);
-        } catch (err) {
-          console.error("Error parsing message data:", err);
-          return;
+          // Pass `data` to the top frame
+          window.top.postMessage({
+            type: "file-data",
+            data,
+          });
+        } else {
+          console.warn("Unknown message type:", e.data.type);
         }
-      };
+      } catch (err) {
+        console.error("Error parsing message data:", err);
+        return;
+      }
+    };
 
-      window.addEventListener("message", onMessage);
-    }
+    window.addEventListener("message", onMessage);
   },
 
   get externalServices() {
@@ -1220,17 +1226,11 @@ const PDFViewerApplication = {
       data = await (this.pdfDocument
         ? this.pdfDocument.getData()
         : this.pdfLoadingTask.getData());
-
-      // Pass `data` to the top frame
-      window.top.postMessage({
-        type: "pdfjs-document-saved",
-        data,
-      });
     } catch {
       // When the PDF document isn't ready, simply download using the URL.
     }
 
-    // this.downloadManager.download(data, this._downloadUrl, this._docFilename);
+    this.downloadManager.download(data, this._downloadUrl, this._docFilename);
   },
 
   async save() {
@@ -1246,13 +1246,7 @@ const PDFViewerApplication = {
     try {
       const data = await this.pdfDocument.saveDocument();
 
-      // Pass `data` to the top frame
-      window.top.postMessage({
-        type: "pdfjs-document-saved",
-        data,
-      });
-
-      // this.downloadManager.download(data, this._downloadUrl, this._docFilename);
+      this.downloadManager.download(data, this._downloadUrl, this._docFilename);
     } catch (reason) {
       // When the PDF document isn't ready, fallback to a "regular" download.
       console.error(`Error when saving the document:`, reason);
