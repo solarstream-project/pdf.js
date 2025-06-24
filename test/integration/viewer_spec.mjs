@@ -1220,4 +1220,57 @@ describe("PDF viewer", () => {
       );
     });
   });
+
+  describe("Filename with a hash sign", () => {
+    let pages;
+
+    beforeEach(async () => {
+      pages = await loadAndWait("empty%23hash.pdf", ".textLayer .endOfContent");
+    });
+
+    afterEach(async () => {
+      await closePages(pages);
+    });
+
+    it("must extract the filename correctly", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          const filename = await page.evaluate(() => document.title);
+
+          expect(filename)
+            .withContext(`In ${browserName}`)
+            .toBe("empty#hash.pdf");
+        })
+      );
+    });
+  });
+
+  describe("File param with an URL", () => {
+    let pages;
+
+    beforeEach(async () => {
+      const baseURL = new URL(global.integrationBaseUrl);
+      const url = `${baseURL.origin}/build/generic/web/compressed.tracemonkey-pldi-09.pdf`;
+      pages = await loadAndWait(
+        encodeURIComponent(url),
+        ".textLayer .endOfContent"
+      );
+    });
+
+    afterEach(async () => {
+      await closePages(pages);
+    });
+
+    it("must load and extract the filename correctly", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          const filename = await page.evaluate(() => document.title);
+
+          expect(filename)
+            .withContext(`In ${browserName}`)
+            .toBe("compressed.tracemonkey-pldi-09.pdf");
+        })
+      );
+    });
+  });
 });

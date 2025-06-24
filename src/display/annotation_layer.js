@@ -43,7 +43,6 @@ import { ColorConverters } from "../shared/scripting_utils.js";
 import { DOMSVGFactory } from "./svg_factory.js";
 import { XfaLayer } from "./xfa_layer.js";
 
-const DEFAULT_TAB_INDEX = 1000;
 const DEFAULT_FONT_SIZE = 9;
 const GetElementsByNameSet = new WeakSet();
 
@@ -186,8 +185,8 @@ class AnnotationElement {
     }
   }
 
-  static _hasPopupData({ titleObj, contentsObj, richText }) {
-    return !!(titleObj?.str || contentsObj?.str || richText?.str);
+  static _hasPopupData({ contentsObj, richText }) {
+    return !!(contentsObj?.str || richText?.str);
   }
 
   get _isEditable() {
@@ -263,7 +262,7 @@ class AnnotationElement {
     const container = document.createElement("section");
     container.setAttribute("data-annotation-id", data.id);
     if (!(this instanceof WidgetAnnotationElement)) {
-      container.tabIndex = DEFAULT_TAB_INDEX;
+      container.tabIndex = 0;
     }
     const { style } = container;
 
@@ -556,6 +555,7 @@ class AnnotationElement {
     svg.classList.add("quadrilateralsContainer");
     svg.setAttribute("width", 0);
     svg.setAttribute("height", 0);
+    svg.role = "none";
     const defs = svgFactory.createElement("defs");
     svg.append(defs);
     const clipPath = svgFactory.createElement("clipPath");
@@ -1293,7 +1293,11 @@ class TextWidgetAnnotationElement extends WidgetAnnotationElement {
 
       element.disabled = this.data.readOnly;
       element.name = this.data.fieldName;
-      element.tabIndex = DEFAULT_TAB_INDEX;
+      element.tabIndex = 0;
+      const format = this.data.dateFormat || this.data.timeFormat;
+      if (format) {
+        element.title = format;
+      }
 
       this._setRequired(element, this.data.required);
 
@@ -1613,7 +1617,7 @@ class CheckboxWidgetAnnotationElement extends WidgetAnnotationElement {
       element.setAttribute("checked", true);
     }
     element.setAttribute("exportValue", data.exportValue);
-    element.tabIndex = DEFAULT_TAB_INDEX;
+    element.tabIndex = 0;
 
     element.addEventListener("change", event => {
       const { name, checked } = event.target;
@@ -1713,7 +1717,7 @@ class RadioButtonWidgetAnnotationElement extends WidgetAnnotationElement {
     if (value) {
       element.setAttribute("checked", true);
     }
-    element.tabIndex = DEFAULT_TAB_INDEX;
+    element.tabIndex = 0;
 
     element.addEventListener("change", event => {
       const { name, checked } = event.target;
@@ -1820,7 +1824,7 @@ class ChoiceWidgetAnnotationElement extends WidgetAnnotationElement {
     selectElement.disabled = this.data.readOnly;
     this._setRequired(selectElement, this.data.required);
     selectElement.name = this.data.fieldName;
-    selectElement.tabIndex = DEFAULT_TAB_INDEX;
+    selectElement.tabIndex = 0;
 
     let addAnEmptyEntry = this.data.combo && this.data.options.length > 0;
 
@@ -2057,7 +2061,9 @@ class PopupAnnotationElement extends AnnotationElement {
   }
 
   render() {
-    this.container.classList.add("popupAnnotation");
+    const { container } = this;
+    container.classList.add("popupAnnotation");
+    container.role = "comment";
 
     const popup = (this.popup = new PopupElement({
       container: this.container,
@@ -2210,7 +2216,7 @@ class PopupElement {
     popup.append(header);
 
     if (this.#dateObj) {
-      const modificationDate = document.createElement("span");
+      const modificationDate = document.createElement("time");
       modificationDate.classList.add("popupDate");
       modificationDate.setAttribute(
         "data-l10n-id",
@@ -2220,6 +2226,7 @@ class PopupElement {
         "data-l10n-args",
         JSON.stringify({ dateObj: this.#dateObj.valueOf() })
       );
+      modificationDate.dateTime = this.#dateObj.toISOString();
       header.append(modificationDate);
     }
 
@@ -2906,12 +2913,22 @@ class HighlightAnnotationElement extends AnnotationElement {
   }
 
   render() {
-    if (!this.data.popupRef && this.hasPopupData) {
+    const {
+      data: { overlaidText, popupRef },
+    } = this;
+    if (!popupRef && this.hasPopupData) {
       this._createPopup();
     }
 
     this.container.classList.add("highlightAnnotation");
     this._editOnDoubleClick();
+
+    if (overlaidText) {
+      const mark = document.createElement("mark");
+      mark.classList.add("overlaidText");
+      mark.textContent = overlaidText;
+      this.container.append(mark);
+    }
 
     return this.container;
   }
@@ -2927,11 +2944,22 @@ class UnderlineAnnotationElement extends AnnotationElement {
   }
 
   render() {
-    if (!this.data.popupRef && this.hasPopupData) {
+    const {
+      data: { overlaidText, popupRef },
+    } = this;
+    if (!popupRef && this.hasPopupData) {
       this._createPopup();
     }
 
     this.container.classList.add("underlineAnnotation");
+
+    if (overlaidText) {
+      const underline = document.createElement("u");
+      underline.classList.add("overlaidText");
+      underline.textContent = overlaidText;
+      this.container.append(underline);
+    }
+
     return this.container;
   }
 }
@@ -2946,11 +2974,22 @@ class SquigglyAnnotationElement extends AnnotationElement {
   }
 
   render() {
-    if (!this.data.popupRef && this.hasPopupData) {
+    const {
+      data: { overlaidText, popupRef },
+    } = this;
+    if (!popupRef && this.hasPopupData) {
       this._createPopup();
     }
 
     this.container.classList.add("squigglyAnnotation");
+
+    if (overlaidText) {
+      const underline = document.createElement("u");
+      underline.classList.add("overlaidText");
+      underline.textContent = overlaidText;
+      this.container.append(underline);
+    }
+
     return this.container;
   }
 }
@@ -2965,11 +3004,22 @@ class StrikeOutAnnotationElement extends AnnotationElement {
   }
 
   render() {
-    if (!this.data.popupRef && this.hasPopupData) {
+    const {
+      data: { overlaidText, popupRef },
+    } = this;
+    if (!popupRef && this.hasPopupData) {
       this._createPopup();
     }
 
     this.container.classList.add("strikeoutAnnotation");
+
+    if (overlaidText) {
+      const strikeout = document.createElement("s");
+      strikeout.classList.add("overlaidText");
+      strikeout.textContent = overlaidText;
+      this.container.append(strikeout);
+    }
+
     return this.container;
   }
 }
@@ -3142,7 +3192,7 @@ class AnnotationLayer {
     return this.#editableAnnotations.size > 0;
   }
 
-  async #appendElement(element, id) {
+  async #appendElement(element, id, popupElements) {
     const contentElement = element.firstChild || element;
     const annotationId = (contentElement.id = `${AnnotationPrefix}${id}`);
     const ariaAttributes =
@@ -3153,13 +3203,18 @@ class AnnotationLayer {
       }
     }
 
-    this.div.append(element);
-    this.#accessibilityManager?.moveElementInDOM(
-      this.div,
-      element,
-      contentElement,
-      /* isRemovable = */ false
-    );
+    if (popupElements) {
+      // Set the popup just after the first element associated with the popup.
+      popupElements.at(-1).container.after(element);
+    } else {
+      this.div.append(element);
+      this.#accessibilityManager?.moveElementInDOM(
+        this.div,
+        element,
+        contentElement,
+        /* isRemovable = */ false
+      );
+    }
   }
 
   /**
@@ -3227,7 +3282,7 @@ class AnnotationLayer {
       if (data.hidden) {
         rendered.style.visibility = "hidden";
       }
-      await this.#appendElement(rendered, data.id);
+      await this.#appendElement(rendered, data.id, elementParams.elements);
 
       if (element._isEditable) {
         this.#editableAnnotations.set(element.data.id, element);
@@ -3263,7 +3318,7 @@ class AnnotationLayer {
         continue;
       }
       const rendered = element.render();
-      await this.#appendElement(rendered, data.id);
+      await this.#appendElement(rendered, data.id, null);
     }
   }
 
