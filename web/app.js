@@ -2346,20 +2346,40 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     "https://app.solarstream.ch",
     "https://staging.app.solarstream.ch",
   ]);
+
   // eslint-disable-next-line no-var
   var validateFileURL = function (file) {
     if (!file) {
       return;
     }
+
     const viewerOrigin = URL.parse(window.location)?.origin || "null";
     if (HOSTED_VIEWER_ORIGINS.has(viewerOrigin)) {
       // Hosted or local viewer, allow for any file locations
       return;
     }
-    const fileOrigin = URL.parse(file, window.location)?.origin;
-    if (fileOrigin === viewerOrigin) {
+
+    if (file.startsWith("data:")) {
+      // Data URLs are always allowed, since they are not cross-origin.
       return;
     }
+
+    if (file.startsWith("blob:")) {
+      // We need to strip the "blob:" prefix for the URL parsing.
+      file = file.slice("blob:".length);
+    }
+
+    const fileUrl = URL.parse(file, window.location);
+    const fileHostname = fileUrl?.hostname;
+    const fileOrigin = fileUrl?.origin;
+
+    if (
+      ["localhost", "127.0.0.1"].includes(fileHostname) ||
+      HOSTED_VIEWER_ORIGINS.has(fileOrigin)
+    ) {
+      return;
+    }
+
     const ex = new Error("file origin does not match viewer's");
 
     PDFViewerApplication._documentError("pdfjs-loading-error", {
