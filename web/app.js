@@ -2340,6 +2340,8 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     "null",
     "http://mozilla.github.io",
     "https://mozilla.github.io",
+    "https://app.solarstream.ch",
+    "https://staging.app.solarstream.ch",
   ]);
   // eslint-disable-next-line no-var
   var validateFileURL = function (file) {
