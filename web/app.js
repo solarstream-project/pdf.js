@@ -2345,6 +2345,7 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     "https://mozilla.github.io",
     "https://app.solarstream.ch",
     "https://staging.app.solarstream.ch",
+    "https://local.app.solarstream.ch",
   ]);
 
   // eslint-disable-next-line no-var
