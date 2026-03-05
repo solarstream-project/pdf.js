@@ -899,7 +899,15 @@ const PDFViewerApplication = {
         if (e.data.type === "open-file") {
           await this.open({ data: e.data.data });
         } else if (e.data.type === "request-file-data") {
-          const data = await this.pdfDocument.saveDocument();
+          console.debug(
+            `[PDF DEBUG] this.pdfDocument.annotationStorage =`,
+            this.pdfDocument.annotationStorage
+          );
+
+          // TODO: Sometimes, `annotationStorage` is out of sync with the UI, leading to some annotations not being rendered.
+          const data = await (this.pdfDocument.annotationStorage.size > 0
+            ? this.pdfDocument.saveDocument()
+            : this.pdfDocument.getData());
 
           // Pass `data` to the top frame
           window.top.postMessage({
@@ -1350,9 +1358,12 @@ const PDFViewerApplication = {
     // a message and change PdfjsChild.sys.mjs to take it into account.
     const { classList } = this.appConfig.appContainer;
     classList.add("wait");
+
+    // TODO: Sometimes, `annotationStorage` is out of sync with the UI, leading to some annotations not being rendered.
     await (this.pdfDocument?.annotationStorage.size > 0
       ? this.save()
       : this.download());
+
     classList.remove("wait");
   },
 
