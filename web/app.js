@@ -901,7 +901,9 @@ const PDFViewerApplication = {
         } else if (e.data.type === "request-file-data") {
           console.debug(
             `[PDF DEBUG] this.pdfDocument.annotationStorage =`,
-            this.pdfDocument.annotationStorage
+            this.pdfDocument.annotationStorage,
+            `[PDF DEBUG] this.pdfDocument.annotationStorage.size =`,
+            this.pdfDocument.annotationStorage.size
           );
 
           // TODO: Sometimes, `annotationStorage` is out of sync with the UI, leading to some annotations not being rendered.
