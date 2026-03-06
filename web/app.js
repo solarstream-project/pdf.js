@@ -906,16 +906,23 @@ const PDFViewerApplication = {
             this.pdfDocument.annotationStorage.size
           );
 
-          // TODO: Sometimes, `annotationStorage` is out of sync with the UI, leading to some annotations not being rendered.
-          const data = await (this.pdfDocument.annotationStorage.size > 0
-            ? this.pdfDocument.saveDocument()
-            : this.pdfDocument.getData());
+          await this.pdfScriptingManager.dispatchWillSave();
 
-          // Pass `data` to the top frame
-          window.top.postMessage({
-            type: "file-data",
-            data,
-          });
+          try {
+            const data = await (this.pdfDocument.annotationStorage.size > 0
+              ? this.pdfDocument.saveDocument()
+              : this.pdfDocument.getData());
+
+            // Pass `data` to the top frame
+            window.top.postMessage({
+              type: "file-data",
+              data,
+            });
+          } catch (e) {
+            console.error(`[PDF DEBUG] Error when saving the document:`, e);
+          } finally {
+            await this.pdfScriptingManager.dispatchDidSave();
+          }
         } else {
           console.warn("Unknown message type:", e.data.type);
         }
