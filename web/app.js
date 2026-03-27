@@ -893,19 +893,15 @@ const PDFViewerApplication = {
 
     // Listen for events
     const onMessage = async (/** @type {MessageEvent} */ e) => {
-      console.log("Received message:", e);
+      console.log("[PDF DEBUG] Received message:", e);
 
       try {
         if (e.data.type === "open-file") {
-          await this.open({ data: e.data.data });
+          await this.open({
+            data: e.data.data,
+            filename: e.data.title ?? e.data.filename,
+          });
         } else if (e.data.type === "request-file-data") {
-          console.debug(
-            `[PDF DEBUG] this.pdfDocument.annotationStorage =`,
-            this.pdfDocument.annotationStorage,
-            `[PDF DEBUG] this.pdfDocument.annotationStorage.size =`,
-            this.pdfDocument.annotationStorage.size
-          );
-
           await this.pdfScriptingManager.dispatchWillSave();
 
           try {
@@ -920,6 +916,11 @@ const PDFViewerApplication = {
             });
           } catch (e) {
             console.error(`[PDF DEBUG] Error when saving the document:`, e);
+
+            window.top.postMessage({
+              type: "file-data-error",
+              error: e instanceof Error ? e.message : String(e),
+            });
           } finally {
             await this.pdfScriptingManager.dispatchDidSave();
           }
@@ -932,6 +933,7 @@ const PDFViewerApplication = {
       }
     };
 
+    window.top.postMessage({ type: "viewer-ready" });
     window.addEventListener("message", onMessage);
   },
 
@@ -1245,10 +1247,10 @@ const PDFViewerApplication = {
     const workerParams = AppOptions.getAll(OptionKind.WORKER);
     Object.assign(GlobalWorkerOptions, workerParams);
 
-    if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
-      if (args.data && isPdfFile(args.filename)) {
-        this._contentDispositionFilename = args.filename;
-      }
+
+    if (args.data && isPdfFile(args.filename)) {
+      this._contentDispositionFilename = args.filename;
+      this.setTitle(args.filename);
     } else if (args.url) {
       // The Firefox built-in viewer always calls `setTitleUsingUrl`, before
       // `initPassiveLoading`, and it never provides an `originalUrl` here.
