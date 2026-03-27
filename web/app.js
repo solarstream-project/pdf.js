@@ -910,14 +910,14 @@ const PDFViewerApplication = {
               : this.pdfDocument.getData());
 
             // Pass `data` to the top frame
-            window.top.postMessage({
+            window.parent.postMessage({
               type: "file-data",
               data,
             });
           } catch (e) {
             console.error(`[PDF DEBUG] Error when saving the document:`, e);
 
-            window.top.postMessage({
+            window.parent.postMessage({
               type: "file-data-error",
               error: e instanceof Error ? e.message : String(e),
             });
@@ -933,8 +933,8 @@ const PDFViewerApplication = {
       }
     };
 
-    window.top.postMessage({ type: "viewer-ready" });
     window.addEventListener("message", onMessage);
+    window.parent.postMessage({ type: "viewer-ready" });
   },
 
   get externalServices() {
@@ -1246,7 +1246,6 @@ const PDFViewerApplication = {
     // Set the necessary global worker parameters, using the available options.
     const workerParams = AppOptions.getAll(OptionKind.WORKER);
     Object.assign(GlobalWorkerOptions, workerParams);
-
 
     if (args.data && isPdfFile(args.filename)) {
       this._contentDispositionFilename = args.filename;
@@ -2503,9 +2502,6 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     "null",
     "http://mozilla.github.io",
     "https://mozilla.github.io",
-    "https://app.solarstream.ch",
-    "https://staging.app.solarstream.ch",
-    "https://local.app.solarstream.ch",
   ]);
 
   // eslint-disable-next-line no-var
@@ -2515,7 +2511,10 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     }
 
     const viewerOrigin = URL.parse(window.location)?.origin || "null";
-    if (HOSTED_VIEWER_ORIGINS.has(viewerOrigin)) {
+    if (
+      HOSTED_VIEWER_ORIGINS.has(viewerOrigin) ||
+      viewerOrigin.endsWith(".app.solarstream.ch")
+    ) {
       // Hosted or local viewer, allow for any file locations
       return;
     }
