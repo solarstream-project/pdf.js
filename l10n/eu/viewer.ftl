@@ -201,6 +201,19 @@ pdfjs-thumb-page-title =
 #   $page (Number) - the page number
 pdfjs-thumb-page-canvas =
     .aria-label = { $page }. orriaren koadro txikia
+# Variables:
+#   $page (Number) - the page number
+pdfjs-thumb-page-checkbox1 =
+    .title = Hautatu { $page } orria
+# Variables:
+#   $page (Number) - the page number
+pdfjs-thumb-page-checkbox =
+    .aria-label = Hautatu { $page } orria
+# Variables:
+#   $page (Number) - the page number
+#   $total (Number) - the number of pages
+pdfjs-thumb-page-title1 =
+    .title = { $total } / { $page }. orria
 
 ## Find panel button title and messages
 
@@ -649,15 +662,22 @@ pdfjs-toggle-views-manager-button =
     .title = Txandakatu alboko barra
 pdfjs-toggle-views-manager-notification-button =
     .title = Txandakatu alboko barra (dokumentuak koadro txikiak/eskema/eranskinak/geruzak ditu)
+pdfjs-toggle-views-manager-button1-label = Kudeatu orriak
 pdfjs-toggle-views-manager-button-label = Txandakatu alboko barra
 pdfjs-views-manager-sidebar =
     .aria-label = Alboko barra
+pdfjs-views-manager-sidebar-resizer =
+    .aria-label = Alboko barra neurriz aldatzekoa
 pdfjs-views-manager-view-selector-button =
     .title = Ikuspegiak
 pdfjs-views-manager-view-selector-button-label = Ikuspegiak
 pdfjs-views-manager-pages-title = Orriak
+pdfjs-views-manager-outlines-title1 = Dokumentuaren eskema
+    .title = Dokumentuaren eskema (klik bikoitza elementu guztiak zabaltzeko/tolesteko)
 pdfjs-views-manager-outlines-title = Dokumentuaren eskema
 pdfjs-views-manager-attachments-title = Eranskinak
+pdfjs-views-manager-layers-title1 = Geruzak
+    .title = Geruzak (klik bikoitza geruza guztiak egoera lehenetsira berrezartzeko)
 pdfjs-views-manager-layers-title = Geruzak
 pdfjs-views-manager-pages-option-label = Orriak
 pdfjs-views-manager-outlines-option-label = Dokumentuaren eskema
@@ -678,6 +698,7 @@ pdfjs-views-manager-pages-status-action-button-label = Kudeatu
 pdfjs-views-manager-pages-status-copy-button-label = Kopiatu
 pdfjs-views-manager-pages-status-cut-button-label = Ebaki
 pdfjs-views-manager-pages-status-delete-button-label = Ezabatu
+pdfjs-views-manager-pages-status-export-selected-button-label = Esportatu hautatutakoa…
 pdfjs-views-manager-pages-status-save-as-button-label = Gorde honela…
 # Variables:
 #   $count (Number) - the number of selected pages to be cut.
@@ -707,9 +728,22 @@ pdfjs-views-manager-status-warning-copy-label = Ezin da kopiatu. Berritu orria e
 pdfjs-views-manager-status-warning-delete-label = Ezin da ezabatu. Berritu orria eta saiatu berriro.
 pdfjs-views-manager-status-warning-save-label = Ezin da gorde. Berritu orria eta saiatu berriro.
 pdfjs-views-manager-status-undo-button-label = Desegin
+pdfjs-views-manager-status-done-button-label = Eginda
 pdfjs-views-manager-status-close-button =
     .title = Itxi
 pdfjs-views-manager-status-close-button-label = Itxi
+pdfjs-views-manager-paste-button-label = Itsatsi
+pdfjs-views-manager-paste-button-before =
+    .title = Itsatsi lehen orriaren aurretik
+# Variables:
+#   $page (Number) - the page number after which the paste button is.
+pdfjs-views-manager-paste-button-after =
+    .title = Itsatsi { $page }. orriaren aurretik
+# Badge used to promote a new feature in the UI, keep it as short as possible.
+# It's spelled uppercase for English, but it can be translated as usual.
+pdfjs-new-badge-content = BERRIA
+pdfjs-toggle-views-manager-button1 =
+    .title = Kudeatu orriak
 
 ## Main menu for adding/removing signatures
 

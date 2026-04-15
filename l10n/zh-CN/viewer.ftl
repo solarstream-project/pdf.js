@@ -201,6 +201,19 @@ pdfjs-thumb-page-title =
 #   $page (Number) - the page number
 pdfjs-thumb-page-canvas =
     .aria-label = 页面 { $page } 的缩略图
+# Variables:
+#   $page (Number) - the page number
+pdfjs-thumb-page-checkbox1 =
+    .title = 选择第 { $page } 页
+# Variables:
+#   $page (Number) - the page number
+pdfjs-thumb-page-checkbox =
+    .aria-label = 选择第 { $page } 页
+# Variables:
+#   $page (Number) - the page number
+#   $total (Number) - the number of pages
+pdfjs-thumb-page-title1 =
+    .title = 第 { $page } / { $total } 页
 
 ## Find panel button title and messages
 
@@ -629,15 +642,22 @@ pdfjs-toggle-views-manager-button =
     .title = 打开/关闭侧栏
 pdfjs-toggle-views-manager-notification-button =
     .title = 打开/关闭侧栏（文档所含的缩略图/大纲/附件/图层）
+pdfjs-toggle-views-manager-button1-label = 管理页面
 pdfjs-toggle-views-manager-button-label = 打开/关闭侧栏
 pdfjs-views-manager-sidebar =
     .aria-label = 侧栏
+pdfjs-views-manager-sidebar-resizer =
+    .aria-label = 调整侧栏大小
 pdfjs-views-manager-view-selector-button =
     .title = 视图
 pdfjs-views-manager-view-selector-button-label = 视图
 pdfjs-views-manager-pages-title = 页面
+pdfjs-views-manager-outlines-title1 = 文档大纲
+    .title = 文档大纲（双击可展开/折叠所有项目）
 pdfjs-views-manager-outlines-title = 文档大纲
 pdfjs-views-manager-attachments-title = 附件
+pdfjs-views-manager-layers-title1 = 图层
+    .title = 图层（双击可将所有图层重置为默认状态）
 pdfjs-views-manager-layers-title = 图层
 pdfjs-views-manager-pages-option-label = 页面
 pdfjs-views-manager-outlines-option-label = 文档大纲
@@ -654,6 +674,7 @@ pdfjs-views-manager-pages-status-action-button-label = 管理
 pdfjs-views-manager-pages-status-copy-button-label = 复制
 pdfjs-views-manager-pages-status-cut-button-label = 剪切
 pdfjs-views-manager-pages-status-delete-button-label = 删除
+pdfjs-views-manager-pages-status-export-selected-button-label = 导出选中的页面…
 pdfjs-views-manager-pages-status-save-as-button-label = 另存为…
 # Variables:
 #   $count (Number) - the number of selected pages to be cut.
@@ -671,9 +692,22 @@ pdfjs-views-manager-status-warning-copy-label = 无法复制，请刷新页面�
 pdfjs-views-manager-status-warning-delete-label = 无法删除，请刷新页面并重试。
 pdfjs-views-manager-status-warning-save-label = 无法保存，请刷新页面并重试。
 pdfjs-views-manager-status-undo-button-label = 撤销
+pdfjs-views-manager-status-done-button-label = 完成
 pdfjs-views-manager-status-close-button =
     .title = 关闭
 pdfjs-views-manager-status-close-button-label = 关闭
+pdfjs-views-manager-paste-button-label = 粘贴
+pdfjs-views-manager-paste-button-before =
+    .title = 粘贴在第一页之前
+# Variables:
+#   $page (Number) - the page number after which the paste button is.
+pdfjs-views-manager-paste-button-after =
+    .title = 粘贴在第 { $page } 页之后
+# Badge used to promote a new feature in the UI, keep it as short as possible.
+# It's spelled uppercase for English, but it can be translated as usual.
+pdfjs-new-badge-content = 新
+pdfjs-toggle-views-manager-button1 =
+    .title = 管理页面
 
 ## Main menu for adding/removing signatures
 

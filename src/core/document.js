@@ -60,6 +60,7 @@ import {
   RefSet,
   RefSetCache,
 } from "./primitives.js";
+import { FunctionType, PDFFunctionFactory } from "./function.js";
 import { getXfaFontDict, getXfaFontName } from "./xfa_fonts.js";
 import { NullStream, Stream } from "./stream.js";
 import { BaseStream } from "./base_stream.js";
@@ -69,9 +70,11 @@ import { clearGlobalCaches } from "./cleanup_helper.js";
 import { DatasetReader } from "./dataset_reader.js";
 import { Intersector } from "./intersector.js";
 import { Linearization } from "./parser.js";
+import { LocalColorSpaceCache } from "./image_utils.js";
 import { ObjectLoader } from "./object_loader.js";
 import { OperatorList } from "./operator_list.js";
 import { PartialEvaluator } from "./evaluator.js";
+import { PDFImage } from "./image.js";
 import { StreamsSequenceStream } from "./decode_stream.js";
 import { StructTreePage } from "./struct_tree.js";
 import { XFAFactory } from "./xfa/factory.js";
@@ -80,8 +83,6 @@ import { XRef } from "./xref.js";
 const LETTER_SIZE_MEDIABOX = [0, 0, 612, 792];
 
 class Page {
-  #areAnnotationsCached = false;
-
   #resourcesPromise = null;
 
   constructor({
@@ -146,6 +147,10 @@ class Page {
       systemFontCache: this.systemFontCache,
       options: this.evaluatorOptions,
     });
+  }
+
+  createAnnotationEvaluator(handler) {
+    return this.#createPartialEvaluator(handler);
   }
 
   #getInheritableProperty(key, getArray = false) {
@@ -383,6 +388,7 @@ class Page {
     );
     const newData = await AnnotationFactory.saveNewAnnotations(
       partialEvaluator,
+      this.xref,
       task,
       annotations,
       imagePromises,
@@ -866,8 +872,6 @@ class Page {
         return sortedAnnotations;
       });
 
-    this.#areAnnotationsCached = true;
-
     return shadow(this, "_parsedAnnotations", promise);
   }
 
@@ -889,7 +893,7 @@ class Page {
   ) {
     const { pageIndex } = this;
 
-    if (this.#areAnnotationsCached) {
+    if (Object.hasOwn(this, "_parsedAnnotations")) {
       const cachedAnnotations = await this._parsedAnnotations;
       for (const { data } of cachedAnnotations) {
         if (!types || types.has(data.annotationType)) {
@@ -901,6 +905,8 @@ class Page {
     }
 
     const annots = await this.pdfManager.ensure(this, "annotations");
+    let partialEvaluator;
+
     for (const annotationRef of annots) {
       promises.push(
         AnnotationFactory.create(
@@ -919,7 +925,8 @@ class Page {
             }
             annotation.data.pageIndex = pageIndex;
             if (annotation.hasTextContent && annotation.viewable) {
-              const partialEvaluator = this.#createPartialEvaluator(handler);
+              partialEvaluator ??= this.#createPartialEvaluator(handler);
+
               await annotation.extractTextContent(partialEvaluator, task, [
                 -Infinity,
                 -Infinity,
@@ -2029,6 +2036,121 @@ class PDFDocument {
       "annotationGlobals",
       AnnotationFactory.createGlobals(this.pdfManager)
     );
+  }
+
+  async toJSObject(value, firstCall = true) {
+    if (
+      typeof PDFJSDev !== "undefined" &&
+      !PDFJSDev.test("TESTING || INTERNAL_VIEWER")
+    ) {
+      throw new Error("Not implemented: toJSObject");
+    }
+    const { InternalViewerUtils } =
+      typeof PDFJSDev === "undefined"
+        ? await import("./internal_viewer_utils.js")
+        : await __eager_import__("./internal_viewer_utils.js");
+
+    if (value === null && firstCall) {
+      return this.toJSObject(this.xref.trailer, false);
+    }
+    if (value instanceof Dict) {
+      const obj = Object.create(null);
+      const isPage = isName(value.get("Type"), "Page");
+      for (const [key, val] of value.getRawEntries()) {
+        obj[key] =
+          isPage && key === "Contents"
+            ? InternalViewerUtils.getContentTokens(val, this.xref)
+            : await this.toJSObject(val, false);
+      }
+      return obj;
+    }
+    if (Array.isArray(value)) {
+      return Promise.all(value.map(v => this.toJSObject(v, false)));
+    }
+    if (value instanceof Ref) {
+      if (firstCall) {
+        return this.toJSObject(this.xref.fetch(value), false);
+      }
+      const result = Object.create(null);
+      result.num = value.num;
+      result.gen = value.gen;
+      return result;
+    }
+    if (value instanceof BaseStream) {
+      const { dict } = value;
+      const obj = Object.create(null);
+      obj.dict = await this.toJSObject(dict, false);
+
+      if (isName(dict.get("Subtype"), "Image")) {
+        const isImageMask = dict.get("ImageMask") === true;
+        if (isImageMask) {
+          dict.set("ImageMask", false);
+          dict.set("IM", false);
+          value.numComps = value.bitsPerComponent = 1;
+        }
+        try {
+          const imageObj = await PDFImage.buildImage({
+            xref: this.xref,
+            res: Dict.empty,
+            image: value,
+            pdfFunctionFactory: new PDFFunctionFactory({ xref: this.xref }),
+            globalColorSpaceCache: this.catalog.globalColorSpaceCache,
+            localColorSpaceCache: new LocalColorSpaceCache(),
+          });
+          const imgData = await imageObj.createImageData(
+            /* forceRGBA = */ true,
+            /* isOffscreenCanvasSupported = */ false
+          );
+          obj.imageData = {
+            width: imgData.width,
+            height: imgData.height,
+            kind: imgData.kind,
+            data: imgData.data,
+          };
+          return obj;
+        } catch {
+          // Fall through to regular byte stream if image decoding fails.
+        }
+        if (isImageMask) {
+          dict.set("ImageMask", true);
+          delete value.numComps;
+          delete value.bitsPerComponent;
+        }
+      }
+
+      if (isName(dict.get("Subtype"), "Form")) {
+        obj.bytes = value.getString();
+        value.reset();
+        const { instructions, cmdNames } =
+          InternalViewerUtils.groupIntoInstructions(
+            InternalViewerUtils.tokenizeStream(value, this.xref)
+          );
+        obj.contentStream = true;
+        obj.instructions = instructions;
+        obj.cmdNames = cmdNames;
+        return obj;
+      }
+
+      if (dict.get("FunctionType") === FunctionType.POSTSCRIPT_CALCULATOR) {
+        const source = value.getString();
+        value.reset();
+        const domain = dict.get("Domain") ?? [];
+        const range = dict.get("Range") ?? [];
+        obj.psFunction = true;
+        obj.source = source;
+        obj.psLines = InternalViewerUtils.tokenizePSSource(source);
+        obj.jsCode = InternalViewerUtils.postScriptToJSCode(
+          source,
+          domain,
+          range
+        );
+        return obj;
+      }
+
+      obj.bytes = value.getString();
+      return obj;
+    }
+    return value;
   }
 }
 

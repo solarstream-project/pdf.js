@@ -675,6 +675,8 @@ class AnnotationEditorUIManager {
 
   #allLayers = new Map();
 
+  #savedAllLayers = null;
+
   #altTextManager = null;
 
   #annotationStorage = null;
@@ -1841,6 +1843,66 @@ class AnnotationEditorUIManager {
     }
   }
 
+  updatePageIndex(oldPageIndex, newPageIndex) {
+    for (const editor of this.getEditors(oldPageIndex)) {
+      editor.pageIndex = newPageIndex;
+    }
+    const layer = this.#savedAllLayers.get(oldPageIndex);
+    if (layer) {
+      layer.pageIndex = newPageIndex;
+      this.#allLayers.set(newPageIndex, layer);
+      if (this.#isEnabled) {
+        layer.enable();
+      } else {
+        layer.disable();
+      }
+    }
+  }
+
+  startUpdatePages() {
+    this.#savedAllLayers = new Map(this.#allLayers);
+    this.#allLayers.clear();
+  }
+
+  endUpdatePages() {
+    this.#savedAllLayers = null;
+  }
+
+  clonePage(pageIndex, newPageIndex) {
+    for (const editor of this.getEditors(pageIndex)) {
+      const serialized = editor.serialize(
+        editor.mode !== AnnotationEditorType.HIGHLIGHT
+      );
+      if (!serialized) {
+        continue;
+      }
+      serialized.pageIndex = newPageIndex;
+      serialized.id = this.getId();
+      serialized.isClone = true;
+      delete serialized.popupRef;
+      this.#annotationStorage.setValue(serialized.id, serialized);
+    }
+  }
+
+  findClonesForPage(layer) {
+    const promises = [];
+    const { pageIndex } = layer;
+    for (const [id, editor] of this.#annotationStorage) {
+      if (editor.pageIndex === pageIndex && editor.isClone) {
+        this.#annotationStorage.remove(id);
+        promises.push(
+          layer.deserialize(editor).then(deserializedEditor => {
+            if (deserializedEditor) {
+              deserializedEditor.isClone = true;
+              layer.addOrRebuild(deserializedEditor);
+            }
+          })
+        );
+      }
+    }
+    return Promise.all(promises);
+  }
+
   /**
    * Update the different possible states of this manager, e.g. is there
    * something to undo, redo, ...
@@ -1852,7 +1914,7 @@ class AnnotationEditorUIManager {
     );
 
     if (hasChanged) {
-      this._eventBus.dispatch("annotationeditorstateschanged", {
+      this._eventBus.dispatch("editingstateschanged", {
         source: this,
         details: Object.assign(this.#previousStates, details),
       });
@@ -2393,6 +2455,7 @@ class AnnotationEditorUIManager {
         ed.unselect();
       }
     }
+    this.#commentManager?.destroyPopup();
     this.#selectedEditors.clear();
 
     this.#selectedEditors.add(editor);
@@ -2582,6 +2645,8 @@ class AnnotationEditorUIManager {
     if (this.#currentDrawingSession?.commitOrRemove()) {
       return;
     }
+
+    this.#commentManager?.destroyPopup();
 
     if (!this.hasSelection) {
       return;

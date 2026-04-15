@@ -27,7 +27,9 @@ import { JpegStream } from "./jpeg_stream.js";
 import { JpxImage } from "./jpx.js";
 import { MissingDataException } from "./core_utils.js";
 import { OperatorList } from "./operator_list.js";
+import { Pattern } from "./pattern.js";
 import { PDFDocument } from "./document.js";
+import { PDFFunctionFactory } from "./function.js";
 import { Stream } from "./stream.js";
 
 function parseDocBaseUrl(url) {
@@ -71,6 +73,7 @@ class BasePdfManager {
       FeatureTest.isOffscreenCanvasSupported;
     evaluatorOptions.isImageDecoderSupported &&=
       FeatureTest.isImageDecoderSupported;
+
     this.evaluatorOptions = Object.freeze(evaluatorOptions);
 
     // Initialize image-options once per document.
@@ -83,6 +86,8 @@ class BasePdfManager {
     IccColorSpace.setOptions(options);
     CmykICCBasedCS.setOptions(options);
     JBig2CCITTFaxWasmImage.setOptions(options);
+    PDFFunctionFactory.setOptions(options);
+    Pattern.setOptions(options);
   }
 
   get docId() {
@@ -191,7 +196,7 @@ class NetworkPdfManager extends BasePdfManager {
     try {
       const value = obj[prop];
       if (typeof value === "function") {
-        return value.apply(obj, args);
+        return await value.apply(obj, args);
       }
       return value;
     } catch (ex) {

@@ -14,20 +14,7 @@
  */
 
 if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
-  // eslint-disable-next-line no-var
-  var compatParams = new Map();
-  if (
-    typeof PDFJSDev !== "undefined" &&
-    PDFJSDev.test("LIB") &&
-    !globalThis.navigator?.language
-  ) {
-    globalThis.navigator = {
-      language: "en-US",
-      maxTouchPoints: 1,
-      platform: "",
-      userAgent: "",
-    };
-  }
+  var compatParams = new Map(); // eslint-disable-line no-var
   const { maxTouchPoints, platform, userAgent } = navigator;
 
   const isAndroid = /Android/.test(userAgent);
@@ -245,9 +232,19 @@ const defaultOptions = {
     value: typeof PDFJSDev === "undefined" || PDFJSDev.test("TESTING"),
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
+  enableMerge: {
+    /** @type {boolean} */
+    value: typeof PDFJSDev === "undefined" || PDFJSDev.test("TESTING"),
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
+  },
   enableNewAltTextWhenAddingImage: {
     /** @type {boolean} */
     value: true,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
+  },
+  enableNewBadge: {
+    /** @type {boolean} */
+    value: typeof PDFJSDev === "undefined" || PDFJSDev.test("MOZCENTRAL"),
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
   enableOptimizedPartialRendering: {
@@ -322,6 +319,20 @@ const defaultOptions = {
         ? "resource://pdf.js/web/images/"
         : "./images/",
     kind: OptionKind.VIEWER,
+  },
+  imagesRightClickMinSize: {
+    /** @type {number} */
+    value:
+      typeof PDFJSDev !== "undefined" &&
+      // Firefox mobile does not support right-clicking on images,
+      // see https://bugzilla.mozilla.org/show_bug.cgi?id=2014081.
+      // This option is disabled by default outside of MOZCENTRAL
+      // because it degrades the text selection experience in Chrome
+      // and Safari.
+      PDFJSDev.test("MOZCENTRAL && !GECKOVIEW")
+        ? 16
+        : -1,
+    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
   maxCanvasPixels: {
     /** @type {number} */
@@ -438,8 +449,13 @@ const defaultOptions = {
   },
   enableHWA: {
     /** @type {boolean} */
-    value: typeof PDFJSDev !== "undefined" && !PDFJSDev.test("MOZCENTRAL"),
-    kind: OptionKind.API + OptionKind.VIEWER + OptionKind.PREFERENCE,
+    value: true,
+    kind: OptionKind.API + OptionKind.PREFERENCE,
+  },
+  enableWebGPU: {
+    /** @type {boolean} */
+    value: true,
+    kind: OptionKind.API + OptionKind.PREFERENCE,
   },
   enableXfa: {
     /** @type {boolean} */
@@ -460,11 +476,6 @@ const defaultOptions = {
         : PDFJSDev.test("MOZCENTRAL")
           ? "resource://pdf.js/web/iccs/"
           : "../web/iccs/",
-    kind: OptionKind.API,
-  },
-  isEvalSupported: {
-    /** @type {boolean} */
-    value: true,
     kind: OptionKind.API,
   },
   isOffscreenCanvasSupported: {

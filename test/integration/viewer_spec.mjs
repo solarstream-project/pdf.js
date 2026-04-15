@@ -1646,4 +1646,251 @@ describe("PDF viewer", () => {
       );
     });
   });
+
+  describe("Outline with SE (Structure Element) entries", () => {
+    let pages;
+
+    beforeEach(async () => {
+      pages = await loadAndWait(
+        "outlines_se.pdf",
+        `.page[data-page-number="1"] .endOfContent`
+      );
+    });
+
+    afterEach(async () => {
+      await closePages(pages);
+    });
+
+    it("should navigate to the correct page when clicking an outline item with an SE entry", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          // Open the sidebar.
+          await showViewsManager(page);
+
+          // Switch to the outline view.
+          await page.click("#viewsManagerSelectorButton");
+          await page.waitForSelector("#outlinesViewMenu", { visible: true });
+          await page.click("#outlinesViewMenu");
+
+          for (let i = 2; i >= 1; i--) {
+            await waitAndClick(
+              page,
+              `#outlinesView .treeItem .treeItem:nth-child(${i}) a`
+            );
+            await page.waitForFunction(
+              pageNum => window.PDFViewerApplication.page === pageNum,
+              {},
+              i
+            );
+          }
+        })
+      );
+    });
+  });
+
+  describe("Double-click on title collapses/expands all outline items", () => {
+    let pages;
+
+    beforeEach(async () => {
+      pages = await loadAndWait(
+        "nested_outline.pdf",
+        "#viewsManagerToggleButton"
+      );
+    });
+
+    afterEach(async () => {
+      await closePages(pages);
+    });
+
+    it("should collapse all outline items on first double-click and expand them on second", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          await showViewsManager(page);
+
+          await page.click("#viewsManagerSelectorButton");
+          await page.waitForSelector("#outlinesViewMenu", { visible: true });
+          await page.click("#outlinesViewMenu");
+          await page.waitForSelector("#outlinesView.withNesting");
+
+          // Initially all togglers must be expanded (none hidden).
+          const initialHiddenCount = await page.$$eval(
+            "#outlinesView .treeItemToggler",
+            togglers =>
+              togglers.filter(t => t.classList.contains("treeItemsHidden"))
+                .length
+          );
+          expect(initialHiddenCount).withContext(`In ${browserName}`).toBe(0);
+
+          // Double-click the title label (not on a button) to collapse all.
+          await page.click("#viewsManagerHeaderLabel", { count: 2 });
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll(
+                "#outlinesView .treeItemToggler:not(.treeItemsHidden)"
+              ).length === 0
+          );
+
+          // Double-click again to expand all.
+          await page.click("#viewsManagerHeaderLabel", { count: 2 });
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll(
+                "#outlinesView .treeItemToggler.treeItemsHidden"
+              ).length === 0
+          );
+        })
+      );
+    });
+  });
+
+  describe("Double-click on title resets all layer checkboxes", () => {
+    let pages;
+
+    beforeEach(async () => {
+      pages = await loadAndWait("issue17679.pdf", "#viewsManagerToggleButton");
+    });
+
+    afterEach(async () => {
+      await closePages(pages);
+    });
+
+    it("should restore all layer checkboxes to checked after unchecking them", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          await showViewsManager(page);
+
+          await page.click("#viewsManagerSelectorButton");
+          await page.waitForSelector("#layersViewMenu", { visible: true });
+          await page.click("#layersViewMenu");
+          await page.waitForSelector("#layersView input[type='checkbox']");
+
+          // Uncheck all checkboxes.
+          const checkboxes = await page.$$(
+            "#layersView input[type='checkbox']"
+          );
+          for (const checkbox of checkboxes) {
+            await checkbox.click();
+          }
+          await page.waitForSelector("#layersView:not(:has(:checked))");
+
+          // Double-click the title label to reset layers to their default
+          // state.
+          await page.click("#viewsManagerHeaderLabel", { count: 2 });
+
+          await page.waitForSelector(
+            `#layersView:not(:has(input[type="checkbox"]:not(:checked)))`
+          );
+        })
+      );
+    });
+  });
+
+  describe("PDFPrintService", () => {
+    describe("blob URL revocation (issue #19988)", () => {
+      let pages;
+
+      beforeEach(async () => {
+        pages = await loadAndWait(
+          "basicapi.pdf",
+          ".textLayer .endOfContent",
+          null,
+          {
+            earlySetup: () => {
+              // Track blob URLs created during the print phase (between
+              // beforeprint and afterprint).
+              let trackPrintURLs = false;
+              window._printBlobURLs = [];
+
+              const origCreate = URL.createObjectURL.bind(URL);
+              URL.createObjectURL = blob => {
+                const url = origCreate(blob);
+                if (trackPrintURLs) {
+                  window._printBlobURLs.push(url);
+                }
+                return url;
+              };
+
+              // beforeprint fires before renderPages(); start tracking here.
+              window.addEventListener("beforeprint", () => {
+                trackPrintURLs = true;
+              });
+
+              // window.print() is called by performPrint() after renderPages()
+              // completes and all images are loaded into #printContainer.
+              window.print = () => {
+                const isFirefox = navigator.userAgent.includes("Firefox");
+                if (isFirefox) {
+                  // Firefox re-fetches blob URLs when rendering the print
+                  // preview (especially when a service worker is registered).
+                  // Verify the URLs are still accessible at this point.
+                  window._printImagesAccessible = Promise.all(
+                    window._printBlobURLs.map(url =>
+                      fetch(url).then(
+                        () => true,
+                        () => false
+                      )
+                    )
+                  );
+                } else {
+                  // Chrome uses the cached decoded data already in the <img>
+                  // elements and does not re-fetch blob URLs for printing.
+                  // Just verify the images rendered correctly.
+                  const imgs = document.querySelectorAll("#printContainer img");
+                  window._printImagesAccessible = Promise.resolve(
+                    Array.from(imgs).map(
+                      img => img.complete && img.naturalWidth > 0
+                    )
+                  );
+                }
+              };
+            },
+            appSetup: app => {
+              app._testPrintResolver = Promise.withResolvers();
+            },
+            eventBusSetup: eventBus => {
+              eventBus.on(
+                "afterprint",
+                () => {
+                  // Wait for the checks initiated in window.print() before
+                  // resolving, so the test can assert on them.
+                  (window._printImagesAccessible ?? Promise.resolve([])).then(
+                    window.PDFViewerApplication._testPrintResolver.resolve
+                  );
+                },
+                { once: true }
+              );
+            },
+          }
+        );
+      });
+
+      afterEach(async () => {
+        await closePages(pages);
+      });
+
+      it("must keep print image blob URLs accessible until destroy() is called", async () => {
+        await Promise.all(
+          pages.map(async ([browserName, page]) => {
+            await waitAndClick(page, "#printButton");
+
+            // Resolves with an array of booleans, one per print page image.
+            const accessible = await awaitPromise(
+              await page.evaluateHandle(() => [
+                window.PDFViewerApplication._testPrintResolver.promise,
+              ])
+            );
+
+            expect(accessible.length)
+              .withContext(`In ${browserName}: print pages were rendered`)
+              .toBeGreaterThan(0);
+            expect(accessible.every(v => v))
+              .withContext(
+                `In ${browserName}: all print images accessible at print time`
+              )
+              .toBeTrue();
+          })
+        );
+      });
+    });
+  });
 });

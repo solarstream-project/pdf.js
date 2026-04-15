@@ -14,15 +14,22 @@
  */
 
 import {
+  compileCssFontInfo,
+  compileFontInfo,
+  compileFontPathInfo,
+  compilePatternInfo,
+  compileSystemFontInfo,
+} from "../../src/core/obj_bin_transform_core.js";
+import {
   CssFontInfo,
   FontInfo,
   FontPathInfo,
   PatternInfo,
   SystemFontInfo,
-} from "../../src/shared/obj-bin-transform.js";
-import { FeatureTest, MeshFigureType } from "../../src/shared/util.js";
+} from "../../src/display/obj_bin_transform_display.js";
+import { FeatureTest } from "../../src/shared/util.js";
 
-describe("obj-bin-transform", function () {
+describe("obj_bin_transform", function () {
   describe("Font data", function () {
     const cssFontInfo = {
       fontFamily: "Sample Family",
@@ -78,7 +85,7 @@ describe("obj-bin-transform", function () {
           for (const string of ["Sample Family", "not a number", "angle"]) {
             sizeEstimate += 4 + encoder.encode(string).length;
           }
-          const buffer = CssFontInfo.write(cssFontInfo);
+          const buffer = compileCssFontInfo(cssFontInfo);
           expect(buffer.byteLength).toEqual(sizeEstimate);
           const deserialized = new CssFontInfo(buffer);
           expect(deserialized.fontFamily).toEqual("Sample Family");
@@ -102,7 +109,7 @@ describe("obj-bin-transform", function () {
           ]) {
             sizeEstimate += 4 + encoder.encode(string).length;
           }
-          const buffer = SystemFontInfo.write(systemFontInfo);
+          const buffer = compileSystemFontInfo(systemFontInfo);
           expect(buffer.byteLength).toEqual(sizeEstimate);
           const deserialized = new SystemFontInfo(buffer);
           expect(deserialized.guessFallback).toEqual(false);
@@ -124,9 +131,9 @@ describe("obj-bin-transform", function () {
           sizeEstimate += 4 + 4 * (4 + encoder.encode("string").length);
           sizeEstimate += 4 + 4; // cssFontInfo and systemFontInfo
           sizeEstimate += 4 + fontInfo.data.length;
-          const buffer = FontInfo.write(fontInfo);
+          const buffer = compileFontInfo(fontInfo);
           expect(buffer.byteLength).toEqual(sizeEstimate);
-          const deserialized = new FontInfo({ data: buffer });
+          const deserialized = new FontInfo({ buffer });
           expect(deserialized.black).toEqual(true);
           expect(deserialized.bold).toEqual(true);
           expect(deserialized.disableFontFace).toEqual(true);
@@ -156,12 +163,12 @@ describe("obj-bin-transform", function () {
         });
 
         it("nesting should work as expected", function () {
-          const buffer = FontInfo.write({
+          const buffer = compileFontInfo({
             ...fontInfo,
             cssFontInfo,
             systemFontInfo,
           });
-          const deserialized = new FontInfo({ data: buffer });
+          const deserialized = new FontInfo({ buffer });
           expect(deserialized.cssFontInfo.fontWeight).toEqual("not a number");
           expect(deserialized.systemFontInfo.src).toEqual("source");
         });
@@ -201,6 +208,8 @@ describe("obj-bin-transform", function () {
       25,
     ];
 
+    // Vertices are pre-expanded in the new IR format: posData/colData contain
+    // one entry per vertex (no indexing), and ir[4] is the vertex count.
     const meshPatternIR = [
       "Mesh",
       4,
@@ -208,22 +217,10 @@ describe("obj-bin-transform", function () {
         0, 0, 50, 0, 100, 0, 0, 50, 50, 50, 100, 50, 0, 100, 50, 100, 100, 100,
       ]),
       new Uint8Array([
-        255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 128, 128, 128, 255, 0,
-        255, 0, 255, 255, 255, 128, 0, 128, 0, 128,
+        255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 255, 255, 0, 0, 128, 128, 128,
+        0, 255, 0, 255, 0, 0, 255, 255, 0, 255, 128, 0, 0, 128, 0, 128, 0,
       ]),
-      [
-        {
-          type: MeshFigureType.TRIANGLES,
-          coords: new Int32Array([0, 2, 4, 6, 8, 10, 12, 14, 16]),
-          colors: new Int32Array([0, 2, 4, 6, 8, 10, 12, 14, 16]),
-        },
-        {
-          type: MeshFigureType.LATTICE,
-          coords: new Int32Array([0, 2, 4, 6, 8, 10]),
-          colors: new Int32Array([0, 2, 4, 6, 8, 10]),
-          verticesPerRow: 3,
-        },
-      ],
+      9, // vertexCount (3 triangles × 3 vertices)
       [0, 0, 100, 100],
       [0, 0, 100, 100],
       [128, 128, 128],
@@ -231,7 +228,7 @@ describe("obj-bin-transform", function () {
 
     describe("Pattern serialization and deserialization", function () {
       it("must serialize and deserialize axial gradients correctly", function () {
-        const buffer = PatternInfo.write(axialPatternIR);
+        const buffer = compilePatternInfo(axialPatternIR);
         expect(buffer).toBeInstanceOf(ArrayBuffer);
         expect(buffer.byteLength).toBeGreaterThan(0);
 
@@ -253,7 +250,7 @@ describe("obj-bin-transform", function () {
       });
 
       it("must serialize and deserialize radial gradients correctly", function () {
-        const buffer = PatternInfo.write(radialPatternIR);
+        const buffer = compilePatternInfo(radialPatternIR);
         expect(buffer).toBeInstanceOf(ArrayBuffer);
         expect(buffer.byteLength).toBeGreaterThan(0);
 
@@ -276,7 +273,7 @@ describe("obj-bin-transform", function () {
       });
 
       it("must serialize and deserialize mesh patterns with figures correctly", function () {
-        const buffer = PatternInfo.write(meshPatternIR);
+        const buffer = compilePatternInfo(meshPatternIR);
         expect(buffer).toBeInstanceOf(ArrayBuffer);
         expect(buffer.byteLength).toBeGreaterThan(0);
 
@@ -295,27 +292,7 @@ describe("obj-bin-transform", function () {
         expect(Array.from(reconstructedIR[3])).toEqual(
           Array.from(meshPatternIR[3])
         );
-        expect(reconstructedIR[4].length).toEqual(2);
-
-        const fig1 = reconstructedIR[4][0];
-        expect(fig1.type).toEqual(MeshFigureType.TRIANGLES);
-        expect(fig1.coords).toBeInstanceOf(Int32Array);
-        expect(Array.from(fig1.coords)).toEqual([
-          0, 2, 4, 6, 8, 10, 12, 14, 16,
-        ]);
-        expect(fig1.colors).toBeInstanceOf(Int32Array);
-        expect(Array.from(fig1.colors)).toEqual([
-          0, 2, 4, 6, 8, 10, 12, 14, 16,
-        ]);
-        expect(fig1.verticesPerRow).toBeUndefined();
-
-        const fig2 = reconstructedIR[4][1];
-        expect(fig2.type).toEqual(MeshFigureType.LATTICE);
-        expect(fig2.coords).toBeInstanceOf(Int32Array);
-        expect(Array.from(fig2.coords)).toEqual([0, 2, 4, 6, 8, 10]);
-        expect(fig2.colors).toBeInstanceOf(Int32Array);
-        expect(Array.from(fig2.colors)).toEqual([0, 2, 4, 6, 8, 10]);
-        expect(fig2.verticesPerRow).toEqual(3);
+        expect(reconstructedIR[4]).toEqual(9); // vertexCount
 
         expect(reconstructedIR[5]).toEqual([0, 0, 100, 100]);
         expect(reconstructedIR[6]).toEqual([0, 0, 100, 100]);
@@ -323,84 +300,69 @@ describe("obj-bin-transform", function () {
         expect(Array.from(reconstructedIR[7])).toEqual([128, 128, 128]);
       });
 
-      it("must handle mesh patterns with no figures", function () {
-        const noFiguresIR = [
+      it("must handle mesh patterns with no vertices", function () {
+        const noVerticesIR = [
           "Mesh",
           4,
           new Float32Array([0, 0, 10, 10]),
-          new Uint8Array([255, 0, 0]),
-          [],
+          new Uint8Array([255, 0, 0, 0]),
+          2, // vertexCount
           [0, 0, 10, 10],
           [0, 0, 10, 10],
           null,
         ];
 
-        const buffer = PatternInfo.write(noFiguresIR);
+        const buffer = compilePatternInfo(noVerticesIR);
         const patternInfo = new PatternInfo(buffer);
         const reconstructedIR = patternInfo.getIR();
 
-        expect(reconstructedIR[4]).toEqual([]);
+        expect(reconstructedIR[4]).toEqual(2); // vertexCount
         expect(reconstructedIR[7]).toBeNull(); // background should be null
       });
 
-      it("must preserve figure data integrity across serialization", function () {
-        const buffer = PatternInfo.write(meshPatternIR);
+      it("must preserve vertex data integrity across serialization", function () {
+        const buffer = compilePatternInfo(meshPatternIR);
         const patternInfo = new PatternInfo(buffer);
         const reconstructedIR = patternInfo.getIR();
 
-        // Verify data integrity by checking exact values
-        const originalFig = meshPatternIR[4][0];
-        const reconstructedFig = reconstructedIR[4][0];
-
-        for (let i = 0; i < originalFig.coords.length; i++) {
-          expect(reconstructedFig.coords[i]).toEqual(originalFig.coords[i]);
-        }
-
-        for (let i = 0; i < originalFig.colors.length; i++) {
-          expect(reconstructedFig.colors[i]).toEqual(originalFig.colors[i]);
-        }
+        // Verify posData and colData are preserved exactly
+        expect(Array.from(reconstructedIR[2])).toEqual(
+          Array.from(meshPatternIR[2])
+        );
+        expect(Array.from(reconstructedIR[3])).toEqual(
+          Array.from(meshPatternIR[3])
+        );
       });
 
       it("must calculate correct buffer sizes for different pattern types", function () {
-        const axialBuffer = PatternInfo.write(axialPatternIR);
-        const radialBuffer = PatternInfo.write(radialPatternIR);
-        const meshBuffer = PatternInfo.write(meshPatternIR);
+        const axialBuffer = compilePatternInfo(axialPatternIR);
+        const radialBuffer = compilePatternInfo(radialPatternIR);
+        const meshBuffer = compilePatternInfo(meshPatternIR);
 
         expect(axialBuffer.byteLength).toBeLessThan(radialBuffer.byteLength);
         expect(meshBuffer.byteLength).toBeGreaterThan(axialBuffer.byteLength);
         expect(meshBuffer.byteLength).toBeGreaterThan(radialBuffer.byteLength);
       });
 
-      it("must handle figures with different type enums correctly", function () {
-        const customFiguresIR = [
+      it("must round-trip mesh pattern posData and colData correctly", function () {
+        const customMeshIR = [
           "Mesh",
           6,
           new Float32Array([0, 0, 10, 10]),
-          new Uint8Array([255, 128, 64]),
-          [
-            {
-              type: MeshFigureType.PATCH,
-              coords: new Int32Array([0, 2]),
-              colors: new Int32Array([0, 2]),
-            },
-            {
-              type: MeshFigureType.TRIANGLES,
-              coords: new Int32Array([0]),
-              colors: new Int32Array([0]),
-            },
-          ],
+          new Uint8Array([255, 128, 64, 0]),
+          2, // vertexCount
           [0, 0, 10, 10],
           null,
           null,
         ];
 
-        const buffer = PatternInfo.write(customFiguresIR);
+        const buffer = compilePatternInfo(customMeshIR);
         const patternInfo = new PatternInfo(buffer);
         const reconstructedIR = patternInfo.getIR();
 
-        expect(reconstructedIR[4].length).toEqual(2);
-        expect(reconstructedIR[4][0].type).toEqual(MeshFigureType.PATCH);
-        expect(reconstructedIR[4][1].type).toEqual(MeshFigureType.TRIANGLES);
+        expect(reconstructedIR[4]).toEqual(2); // vertexCount
+        expect(Array.from(reconstructedIR[2])).toEqual([0, 0, 10, 10]);
+        expect(Array.from(reconstructedIR[3])).toEqual([255, 128, 64, 0]);
       });
 
       it("must handle mesh patterns with different background values", function () {
@@ -408,14 +370,14 @@ describe("obj-bin-transform", function () {
           "Mesh",
           4,
           new Float32Array([0, 0, 10, 10]),
-          new Uint8Array([255, 0, 0]),
-          [],
+          new Uint8Array([255, 0, 0, 0]),
+          2, // vertexCount
           [0, 0, 10, 10],
           [0, 0, 10, 10],
           new Uint8Array([255, 128, 64]),
         ];
 
-        const buffer = PatternInfo.write(meshWithBgIR);
+        const buffer = compilePatternInfo(meshWithBgIR);
         const patternInfo = new PatternInfo(buffer);
         const reconstructedIR = patternInfo.getIR();
 
@@ -425,14 +387,14 @@ describe("obj-bin-transform", function () {
           "Mesh",
           5,
           new Float32Array([0, 0, 5, 5]),
-          new Uint8Array([0, 255, 0]),
-          [],
+          new Uint8Array([0, 255, 0, 0]),
+          2, // vertexCount
           [0, 0, 5, 5],
           null,
           null,
         ];
 
-        const buffer2 = PatternInfo.write(meshNoBgIR);
+        const buffer2 = compilePatternInfo(meshNoBgIR);
         const patternInfo2 = new PatternInfo(buffer2);
         const reconstructedIR2 = patternInfo2.getIR();
 
@@ -444,14 +406,14 @@ describe("obj-bin-transform", function () {
           "Mesh",
           4,
           new Float32Array([-10, -5, 20, 15, 0, 30]),
-          new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255]),
-          [],
+          new Uint8Array([255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0]),
+          3, // vertexCount
           null,
           null,
           null,
         ];
 
-        const buffer = PatternInfo.write(customMeshIR);
+        const buffer = compilePatternInfo(customMeshIR);
         const patternInfo = new PatternInfo(buffer);
         const reconstructedIR = patternInfo.getIR();
 
@@ -477,7 +439,7 @@ describe("obj-bin-transform", function () {
         ]);
 
     it("should create a FontPathInfo instance from an array of path commands", function () {
-      const buffer = FontPathInfo.write(path);
+      const buffer = compileFontPathInfo(path);
       const fontPathInfo = new FontPathInfo(buffer);
       expect(fontPathInfo.path).toEqual(path);
     });

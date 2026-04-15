@@ -2637,6 +2637,15 @@
     "type": "load"
   },
   {
+    "id": "pr5134",
+    "file": "pdfs/pr5134.pdf",
+    "md5": "6a701a163472e071a2519348b55cbac1",
+    "rounds": 1,
+    "link": true,
+    "firstPage": 2,
+    "type": "eq"
+  },
+  {
     "id": "pr8808",
     "file": "pdfs/pr8808.pdf",
     "md5": "bdac6051a98fd8dcfc5344b05fed06f4",
@@ -13079,7 +13088,11 @@
     "rounds": 1,
     "type": "extract",
     "includePages": [0, 2, 12],
-    "pageMapping": { "1": 1, "3": 2, "13": 3 }
+    "pageMapping": {
+      "1": 1,
+      "3": 2,
+      "13": 3
+    }
   },
   {
     "id": "bug900822-encrypted-extract_0",
@@ -13088,7 +13101,9 @@
     "rounds": 1,
     "type": "extract",
     "includePages": [0],
-    "pageMapping": { "1": 1 }
+    "pageMapping": {
+      "1": 1
+    }
   },
   {
     "id": "xfa_bug1998843",
@@ -13970,6 +13985,156 @@
     "file": "pdfs/sci-notation.pdf",
     "md5": "ead167e0328f1a1f4f8901cee501a9c4",
     "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "SimFang-variant",
+    "file": "pdfs/SimFang-variant.pdf",
+    "md5": "d412460812cd940917091e8975620faf",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "XiaoBiaoSong",
+    "file": "pdfs/XiaoBiaoSong.pdf",
+    "md5": "7072f6763bf2f0d6df14d5fc86962c5a",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "radial_gradients",
+    "file": "pdfs/radial_gradients.pdf",
+    "md5": "80e8bed66b83928698f008c33de47edd",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "mesh_shading_empty",
+    "file": "pdfs/mesh_shading_empty.pdf",
+    "md5": "5a1bf9cb73010d84b47d91bb66bae27d",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue20930-text",
+    "file": "pdfs/issue20930.pdf",
+    "md5": "321f0901af604a6052baa7b2855a7e3e",
+    "rounds": 1,
+    "type": "text"
+  },
+  {
+    "id": "issue20872",
+    "file": "pdfs/issue20872.pdf",
+    "md5": "2394eea595990d0148b209fe49f035e5",
+    "rounds": 1,
+    "link": true,
+    "type": "eq"
+  },
+  {
+    "id": "issue20914",
+    "file": "pdfs/issue20914.pdf",
+    "md5": "5740b4600e40c6fc920d38f96a74c6a5",
+    "rounds": 1,
+    "link": true,
+    "type": "eq"
+  },
+  {
+    "id": "tiling_patterns_variations",
+    "file": "pdfs/tiling_patterns_variations.pdf",
+    "md5": "2870c3136be00ddd975149b2c7d1e6df",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "function-based-shading",
+    "file": "pdfs/function_based_shading.pdf",
+    "md5": "7796f0131e7d6428c1bf24a73ff13f95",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "pdfspec-radial-gradient",
+    "file": "pdfs/pdf.pdf",
+    "md5": "dbdb23c939d2be09b43126c3c56060c7",
+    "link": true,
+    "firstPage": 1144,
+    "lastPage": 1144,
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue16091",
+    "file": "pdfs/issue16091.pdf",
+    "md5": "ac6b2b69d9b3675b317708ec00aaf56c",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue7821",
+    "file": "pdfs/issue7821.pdf",
+    "md5": "7f0f390a70228fffe95835518ec266c5",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue21068",
+    "file": "pdfs/issue21068.pdf",
+    "md5": "69558d166186923ad9d639d91884dbd6",
+    "rounds": 1,
+    "type": "eq",
+    "print": true,
+    "annotationStorage": {
+      "27R": {
+        "value": "123"
+      },
+      "28R": {
+        "value": "123"
+      },
+      "29R": {
+        "value": "1234"
+      },
+      "30R": {
+        "value": "123"
+      }
+    }
+  },
+  {
+    "id": "issue21089",
+    "file": "pdfs/issue21089.pdf",
+    "md5": "0ae3954d2f24151dfc36ef717c8afbde",
+    "link": true,
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "recursiveCompositGlyf",
+    "file": "pdfs/recursiveCompositGlyf.pdf",
+    "md5": "e4e106d20e4af10d7a5f1a5da02db66f",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue19634",
+    "file": "pdfs/issue19634.pdf",
+    "md5": "ae33892db2a2421ec7c9c3e2aee07205",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue13520",
+    "file": "pdfs/issue13520.pdf",
+    "md5": "5a690e2303604441308f808b5fc33e22",
+    "rounds": 1,
+    "type": "eq"
+  },
+  {
+    "id": "issue17784",
+    "file": "pdfs/issue17784.pdf",
+    "md5": "e92178bb5ca8d6cd6f79868470adbe1d",
+    "link": true,
+    "rounds": 1,
+    "firstPage": 3,
+    "lastPage": 3,
     "type": "eq"
   }
 ]

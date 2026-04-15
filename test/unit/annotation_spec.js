@@ -35,8 +35,8 @@ import {
 import {
   CMAP_URL,
   createIdFactory,
-  DefaultCMapReaderFactory,
-  DefaultStandardFontDataFactory,
+  DefaultBinaryDataFactory,
+  fetchBuiltInCMapHelper,
   STANDARD_FONT_DATA_URL,
   XRefMock,
 } from "./test_utils.js";
@@ -57,7 +57,6 @@ describe("annotation", function () {
         },
       };
       this.evaluatorOptions = {
-        isEvalSupported: true,
         isOffscreenCanvasSupported: false,
       };
     }
@@ -82,9 +81,13 @@ describe("annotation", function () {
     }
   }
 
-  const fontDataReader = new DefaultStandardFontDataFactory({
-    baseUrl: STANDARD_FONT_DATA_URL,
+  const binaryDataFactory = new DefaultBinaryDataFactory({
+    cMapUrl: CMAP_URL,
+    standardFontDataUrl: STANDARD_FONT_DATA_URL,
   });
+
+  const fetchBuiltInCMap = name =>
+    fetchBuiltInCMapHelper(binaryDataFactory, /* cMapPacked = */ true, name);
 
   class HandlerMock {
     constructor() {
@@ -95,11 +98,11 @@ describe("annotation", function () {
       this.inputs.push({ name, data });
     }
 
-    sendWithPromise(name, data) {
-      if (name !== "FetchStandardFontData") {
-        return Promise.reject(new Error(`Unsupported mock ${name}.`));
+    async sendWithPromise(name, data) {
+      if (name === "FetchBinaryData") {
+        return binaryDataFactory.fetch(data);
       }
-      return fontDataReader.fetch(data);
+      throw new Error(`Unsupported mock ${name}.`);
     }
   }
 
@@ -113,19 +116,10 @@ describe("annotation", function () {
     annotationGlobalsMock =
       await AnnotationFactory.createGlobals(pdfManagerMock);
 
-    const CMapReaderFactory = new DefaultCMapReaderFactory({
-      baseUrl: CMAP_URL,
-    });
-
     const builtInCMapCache = new Map();
-    builtInCMapCache.set(
-      "UniJIS-UTF16-H",
-      await CMapReaderFactory.fetch({ name: "UniJIS-UTF16-H" })
-    );
-    builtInCMapCache.set(
-      "Adobe-Japan1-UCS2",
-      await CMapReaderFactory.fetch({ name: "Adobe-Japan1-UCS2" })
-    );
+    for (const name of ["UniJIS-UTF16-H", "Adobe-Japan1-UCS2"]) {
+      builtInCMapCache.set(name, await fetchBuiltInCMap(name));
+    }
 
     idFactoryMock = createIdFactory(/* pageIndex = */ 0);
     partialEvaluator = new PartialEvaluator({
@@ -4203,6 +4197,7 @@ describe("annotation", function () {
       const changes = new RefSetCache();
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -4320,6 +4315,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test FreeText update");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -4435,6 +4431,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test Ink creation");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -4532,6 +4529,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test Ink creation");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -4764,6 +4762,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test Highlight creation");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -4857,6 +4856,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test free Highlight creation");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -4988,6 +4988,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test Highlight update");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -5051,6 +5052,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test Highlight update");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {
@@ -5215,6 +5217,7 @@ describe("annotation", function () {
       const task = new WorkerTask("test Stamp creation");
       await AnnotationFactory.saveNewAnnotations(
         partialEvaluator,
+        xref,
         task,
         [
           {

@@ -650,13 +650,50 @@ async function scrollIntoView(page, selector) {
     sel => [
       new Promise(resolve => {
         const container = document.getElementById("viewerContainer");
-        if (container.scrollHeight <= container.clientHeight) {
+        const element = document.querySelector(sel);
+        if (!container || !element) {
           resolve();
           return;
         }
-        container.addEventListener("scrollend", resolve, { once: true });
-        const element = document.querySelector(sel);
+        if (
+          container.scrollHeight <= container.clientHeight &&
+          container.scrollWidth <= container.clientWidth
+        ) {
+          resolve();
+          return;
+        }
+
+        const beforeTop = container.scrollTop;
+        const beforeLeft = container.scrollLeft;
+        let settled = false;
+        let timeoutId = null;
+
+        const finish = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+          }
+          container.removeEventListener("scrollend", finish);
+          resolve();
+        };
+
+        container.addEventListener("scrollend", finish, { once: true });
         element.scrollIntoView({ behavior: "instant", block: "start" });
+
+        if (
+          container.scrollTop === beforeTop &&
+          container.scrollLeft === beforeLeft
+        ) {
+          finish();
+          return;
+        }
+
+        // Some browsers occasionally miss `scrollend`, so keep a short
+        // fallback to avoid hanging.
+        timeoutId = setTimeout(finish, 250);
       }),
     ],
     selector
@@ -680,6 +717,10 @@ async function firstPageOnTop(page) {
 }
 
 async function setCaretAt(page, pageNumber, text, position) {
+  // Wait for the text layer to finish rendering before trying to find the span.
+  await page.waitForSelector(
+    `.page[data-page-number="${pageNumber}"] .textLayer .endOfContent`
+  );
   await page.evaluate(
     (pageN, string, pos) => {
       for (const el of document.querySelectorAll(
@@ -890,6 +931,24 @@ function waitForNoElement(page, selector) {
   );
 }
 
+function waitForTextToBe(page, selector, text) {
+  return page.waitForFunction(
+    (sel, str) => document.querySelector(sel)?.textContent.trim() === str,
+    {},
+    selector,
+    text
+  );
+}
+
+function waitForTooltipToBe(page, selector, text) {
+  return page.waitForFunction(
+    (sel, str) => document.querySelector(sel)?.title === str,
+    {},
+    selector,
+    text
+  );
+}
+
 function isCanvasMonochrome(page, pageNumber, rectangle, color) {
   return page.evaluate(
     (rect, pageN, col) => {
@@ -988,6 +1047,15 @@ async function showViewsManager(page) {
   });
 }
 
+async function waitForBrowserTrip(page) {
+  const handle = await page.evaluateHandle(() => [
+    new Promise(resolve => {
+      window.requestAnimationFrame(resolve);
+    }),
+  ]);
+  await awaitPromise(handle);
+}
+
 // Unicode bidi isolation characters, Fluent adds these markers to the text.
 const FSI = "\u2068";
 const PDI = "\u2069";
@@ -1060,6 +1128,7 @@ export {
   waitAndClick,
   waitForAnnotationEditorLayer,
   waitForAnnotationModeChanged,
+  waitForBrowserTrip,
   waitForDOMMutation,
   waitForEntryInStorage,
   waitForEvent,
@@ -1071,6 +1140,8 @@ export {
   waitForSelectedEditor,
   waitForSerialized,
   waitForStorageEntries,
+  waitForTextToBe,
   waitForTimeout,
+  waitForTooltipToBe,
   waitForUnselectedEditor,
 };

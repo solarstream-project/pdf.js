@@ -465,11 +465,7 @@ class AnnotationElement {
       const borderColor = data.borderColor || null;
       if (borderColor) {
         this.#hasBorder = true;
-        style.borderColor = Util.makeHexColor(
-          borderColor[0] | 0,
-          borderColor[1] | 0,
-          borderColor[2] | 0
-        );
+        style.borderColor = Util.makeHexColor(...borderColor);
       } else {
         // Transparent (invisible) border, so do not draw it at all.
         style.borderWidth = 0;
@@ -1374,9 +1370,7 @@ class WidgetAnnotationElement extends AnnotationElement {
   _setBackgroundColor(element) {
     const color = this.data.backgroundColor || null;
     element.style.backgroundColor =
-      color === null
-        ? "transparent"
-        : Util.makeHexColor(color[0], color[1], color[2]);
+      color === null ? "transparent" : Util.makeHexColor(...color);
   }
 
   /**
@@ -1427,7 +1421,7 @@ class WidgetAnnotationElement extends AnnotationElement {
     }
     style.fontSize = `calc(${computedFontSize}px * var(--total-scale-factor))`;
 
-    style.color = Util.makeHexColor(fontColor[0], fontColor[1], fontColor[2]);
+    style.color = Util.makeHexColor(...fontColor);
 
     if (this.data.textAlignment !== null) {
       style.textAlign = TEXT_ALIGNMENT[this.data.textAlignment];
@@ -2139,10 +2133,18 @@ class ChoiceWidgetAnnotationElement extends WidgetAnnotationElement {
       }
     });
 
+    const fixDisplayValue = (option, value) => {
+      const newValue = value.replaceAll(" ", "\u00A0");
+      option.textContent = newValue;
+      if (newValue !== value) {
+        option.setAttribute("display-value", value);
+      }
+    };
+
     // Insert the options into the choice field.
     for (const option of this.data.options) {
       const optionElement = document.createElement("option");
-      optionElement.textContent = option.displayValue;
+      fixDisplayValue(optionElement, option.displayValue);
       optionElement.value = option.exportValue;
       if (storedData.value.includes(option.exportValue)) {
         optionElement.setAttribute("selected", true);
@@ -2185,7 +2187,8 @@ class ChoiceWidgetAnnotationElement extends WidgetAnnotationElement {
     const getItems = event => {
       const options = event.target.options;
       return Array.prototype.map.call(options, option => ({
-        displayValue: option.textContent,
+        displayValue:
+          option.getAttribute("display-value") || option.textContent,
         exportValue: option.value,
       }));
     };
@@ -2239,7 +2242,7 @@ class ChoiceWidgetAnnotationElement extends WidgetAnnotationElement {
             const { index, displayValue, exportValue } = event.detail.insert;
             const selectChild = selectElement.children[index];
             const optionElement = document.createElement("option");
-            optionElement.textContent = displayValue;
+            fixDisplayValue(optionElement, displayValue);
             optionElement.value = exportValue;
 
             if (selectChild) {
@@ -2261,7 +2264,7 @@ class ChoiceWidgetAnnotationElement extends WidgetAnnotationElement {
             for (const item of items) {
               const { displayValue, exportValue } = item;
               const optionElement = document.createElement("option");
-              optionElement.textContent = displayValue;
+              fixDisplayValue(optionElement, displayValue);
               optionElement.value = exportValue;
               selectElement.append(optionElement);
             }
@@ -4100,7 +4103,7 @@ class AnnotationLayer {
   }
 
   getEditableAnnotations() {
-    return Array.from(this.#editableAnnotations.values());
+    return this.#editableAnnotations.values();
   }
 
   getEditableAnnotation(id) {

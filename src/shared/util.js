@@ -25,6 +25,9 @@ const isNodeJS =
   !process.versions.nw &&
   !(process.versions.electron && process.type && process.type !== "browser");
 
+const BBOX_INIT = [Infinity, Infinity, -Infinity, -Infinity];
+const F32_BBOX_INIT = new Float32Array(BBOX_INIT);
+
 const FONT_IDENTITY_MATRIX = [0.001, 0, 0, 0.001, 0, 0];
 
 // Represent the percentage of the height of a single-line field over
@@ -620,23 +623,9 @@ function isLittleEndian() {
   return view32[0] === 1;
 }
 
-// Checks if it's possible to eval JS expressions.
-function isEvalSupported() {
-  try {
-    new Function(""); // eslint-disable-line no-new, no-new-func
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 class FeatureTest {
   static get isLittleEndian() {
     return shadow(this, "isLittleEndian", isLittleEndian());
-  }
-
-  static get isEvalSupported() {
-    return shadow(this, "isEvalSupported", isEvalSupported());
   }
 
   static get isOffscreenCanvasSupported() {
@@ -667,7 +656,6 @@ class FeatureTest {
     return shadow(
       this,
       "isSanitizerSupported",
-      // eslint-disable-next-line no-undef
       typeof Sanitizer !== "undefined"
     );
   }
@@ -1240,12 +1228,6 @@ const makeArr = () => [];
 const makeMap = () => new Map();
 const makeObj = () => Object.create(null);
 
-// TODO: Replace all occurrences of this function with `Math.clamp` once
-//       https://github.com/tc39/proposal-math-clamp/ is generally available.
-function MathClamp(v, min, max) {
-  return Math.min(Math.max(v, min), max);
-}
-
 // TODO: Remove this once `Math.sumPrecise` is generally available.
 if (
   (typeof PDFJSDev === "undefined" ||
@@ -1256,6 +1238,17 @@ if (
   // replace `Array.prototype.reduce()` invocations it should be fine.
   Math.sumPrecise = function (numbers) {
     return numbers.reduce((a, b) => a + b, 0);
+  };
+}
+
+// See https://developer.mozilla.org/en-US/docs/Web/API/Blob/bytes#browser_compatibility
+if (
+  typeof PDFJSDev !== "undefined" &&
+  !PDFJSDev.test("SKIP_BABEL") &&
+  typeof Blob.prototype.bytes !== "function"
+) {
+  Blob.prototype.bytes = async function () {
+    return new Uint8Array(await this.arrayBuffer());
   };
 }
 
@@ -1319,10 +1312,12 @@ export {
   assert,
   BaseException,
   BASELINE_FACTOR,
+  BBOX_INIT,
   bytesToString,
   createValidAbsoluteUrl,
   DocumentActionEventType,
   DrawOPS,
+  F32_BBOX_INIT,
   FeatureTest,
   FONT_IDENTITY_MATRIX,
   FormatError,
@@ -1340,7 +1335,6 @@ export {
   makeArr,
   makeMap,
   makeObj,
-  MathClamp,
   MeshFigureType,
   normalizeUnicode,
   objectSize,

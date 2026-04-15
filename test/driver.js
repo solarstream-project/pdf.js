@@ -505,7 +505,6 @@ class Driver {
     this.delay = params.get("delay") | 0;
     this.inFlightRequests = 0;
     this.testFilter = JSON.parse(params.get("testfilter") || "[]");
-    this.xfaOnly = params.get("xfaonly") === "true";
     this.masterMode = params.get("mastermode") === "true";
 
     // Create a working canvas
@@ -544,12 +543,9 @@ class Driver {
       this._log("done\n");
       this.manifest = await response.json();
 
-      if (this.testFilter?.length || this.xfaOnly) {
+      if (this.testFilter?.length) {
         this.manifest = this.manifest.filter(item => {
           if (this.testFilter.includes(item.id)) {
-            return true;
-          }
-          if (this.xfaOnly && item.enableXfa) {
             return true;
           }
           return false;
@@ -666,7 +662,7 @@ class Driver {
           task.isOffscreenCanvasSupported === false ? false : undefined;
         const disableFontFace = task.disableFontFace === true;
 
-        const loadingTask = getDocument({
+        const documentOptions = {
           url: new URL(task.file, window.location),
           password: task.password,
           cMapUrl: CMAP_URL,
@@ -682,12 +678,15 @@ class Driver {
           isOffscreenCanvasSupported,
           styleElement: xfaStyleElement,
           disableFontFace,
-        });
+        };
+        const loadingTask = getDocument(documentOptions);
         let promise = loadingTask.promise;
 
         if (!this.masterMode && task.type === "extract") {
           promise = promise.then(async doc => {
-            const data = await doc.extractPages([
+            const extractedDocumentOptions = { ...documentOptions };
+            delete extractedDocumentOptions.url;
+            extractedDocumentOptions.data = await doc.extractPages([
               {
                 document: null,
                 includePages: task.includePages,
@@ -695,7 +694,7 @@ class Driver {
             ]);
             await loadingTask.destroy();
             delete task.includePages;
-            return getDocument(data).promise;
+            return getDocument(extractedDocumentOptions).promise;
           });
         }
 
